@@ -1,0 +1,185 @@
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <UniversalTelegramBot.h>
+#include <ArduinoJson.h>
+
+// Network credentials
+const char* ssid = "dell";
+const char* password = "12345678";
+
+// Initialize Telegram BOT Token and Chat ID
+#define BOTtoken "5900072045:AAEFqb-AW4uryM80nN5DPeTOHDsrzt6VLUI" 
+
+#define CHAT_ID "969506549"
+//897542465
+
+//#define CHAT_ID "897542465"
+#define A0 13
+#define A1 12
+#define A2 14
+#define A3 27
+
+
+// defining the pins
+const int trigPin1 = 15;
+const int echoPin1 = 2;
+const int trigPin2 = 4;
+const int echoPin2 = 5;
+const int trigPin3 = 18;
+const int echoPin3 = 19;
+
+const int irPin = 22; 
+const int gasPin = 21;
+const int ldrPin = 23;
+const int metalPin = 34; 
+
+int irState = 0;
+int gasState = 0; 
+int ldrState = 0;
+int metalState = 0;    
+
+
+// defining variables
+long duration1;
+long duration2;
+long duration3;
+int distanceleft;
+int distancefront;
+int distanceright;
+
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOTtoken, client);
+
+void setup() {
+
+  Serial.begin(115200); // Starts the serial communication
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  
+  // Add root certificate for api.telegram.org
+  client.setCACert(TELEGRAM_CERTIFICATE_ROOT); 
+  
+  pinMode(trigPin1, OUTPUT);
+  pinMode(trigPin2, OUTPUT);
+  pinMode(trigPin3, OUTPUT);// Sets the trigPin as an Output
+  pinMode(echoPin1, INPUT); // Sets the echoPin as an Input
+  pinMode(echoPin2, INPUT);
+  pinMode(echoPin3, INPUT);
+  
+  pinMode(A0, OUTPUT);
+  pinMode(A1, OUTPUT);
+  pinMode(A2, OUTPUT);
+  pinMode(A3, OUTPUT);
+
+  pinMode(irPin, INPUT);
+  pinMode(gasPin, INPUT);
+  pinMode(ldrPin, INPUT);
+  pinMode(metalPin, INPUT);
+  
+  bot.sendMessage(CHAT_ID, "Industrial Robot", "");
+}
+
+void loop() {
+  irState = digitalRead(irPin);
+  gasState = digitalRead(gasPin);
+  ldrState = digitalRead(ldrPin);
+  metalState = digitalRead(metalPin);
+
+
+  
+  digitalWrite(trigPin1, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin1, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin1, LOW);
+  duration1 = pulseIn(echoPin1, HIGH);
+  distanceleft = duration1 * 0.034 / 2;
+  //Serial.print("Distance1: ");
+ // Serial.println(distanceleft);
+  digitalWrite(trigPin2, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin2, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin2, LOW);
+  duration2 = pulseIn(echoPin2, HIGH);
+  distancefront = duration2 * 0.034 / 2;
+  //Serial.print("Distance2: ");
+  //Serial.println(distancefront);
+  digitalWrite(trigPin3, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin3, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin3, LOW);
+  duration3 = pulseIn(echoPin3, HIGH);
+  distanceright = duration3 * 0.034 / 2;
+  //Serial.print("Distance3: ");
+  //Serial.println(distanceright);
+
+  if (irState == LOW) {
+      Serial.println("Fire Detected");
+      bot.sendMessage(CHAT_ID, "Fire Detected!!", "");
+      stop_();
+      
+  }
+  
+  else if (gasState == LOW) {
+    // turn LED on:
+    Serial.println("Gas Active");
+    bot.sendMessage(CHAT_ID, "Gas Detected!!", "");
+    stop_();
+  }
+
+  else if (ldrState == HIGH) {
+    // turn LED on:
+     Serial.println("NO Light");
+     bot.sendMessage(CHAT_ID, "No Light Detected!!", "");
+     stop_();
+  }
+
+  //else if (metalState == LOW) {
+    // turn LED on:
+ //    Serial.println("Metal Detected");
+ //    bot.sendMessage(CHAT_ID, "Metal Detected!!", "");
+ //    stop_();
+  //} 
+  
+  else{  
+  
+  //stright
+  if ((distanceleft <= 15 && distancefront > 15 && distanceright <= 15) || (distanceleft > 15 && distancefront > 15 && distanceright > 15))
+  {
+    digitalWrite(A0, HIGH);
+    digitalWrite(A1, LOW);
+    digitalWrite(A2, HIGH);
+    digitalWrite(A3, LOW);
+    Serial.println("Forward");
+  }
+  //FRONT
+  if ((distanceleft <= 15 && distancefront <= 15 && distanceright > 15) || (distanceleft <= 15 && distancefront > 15 && distanceright > 15))
+  {
+    Serial.println("left");
+    digitalWrite(A0, HIGH);
+    digitalWrite(A1, LOW);
+    digitalWrite(A2, LOW);
+    digitalWrite(A3, HIGH);
+    
+  }
+  
+  if ((distanceleft > 15 && distancefront <= 15 && distanceright <= 15) || (distanceleft > 15 && distancefront > 15 && distanceright <= 15) ||  (distanceleft > 15 && distancefront <= 15 && distanceright > 15) )
+  {
+    Serial.println("right");
+    digitalWrite(A0, LOW);
+    digitalWrite(A1, HIGH);
+    digitalWrite(A2, HIGH);
+    digitalWrite(A3, LOW);
+    
+  }
+  } 
+}
+void stop_()
+{
+  digitalWrite(A0, LOW);
+  digitalWrite(A1, LOW);
+  digitalWrite(A2, LOW);
+  digitalWrite(A3, LOW);
+  }
